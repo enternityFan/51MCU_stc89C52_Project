@@ -1,0 +1,183 @@
+C51 COMPILER V9.52.0.0   IIC                                                               06/24/2020 16:35:58 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE IIC
+OBJECT MODULE PLACED IN iic.OBJ
+COMPILER INVOKED BY: D:\Study\soft_ware\Keil4\C51\BIN\C51.EXE iic.c BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          
+   2          #include "reg52.h"
+   3          #include "intrins.h"
+   4          #include "iic.h"
+   5          
+   6          void delay7us()   //延时7us
+   7          {   _nop_();
+   8   1          _nop_();
+   9   1          _nop_();
+  10   1          _nop_();
+  11   1          _nop_();
+  12   1          _nop_();
+  13   1          _nop_();
+  14   1      }
+  15          
+  16          void start() //起始信号，这时数据线电平变化在时钟高电平时，下将沿有效
+  17          {   SCL = 1; //时钟线拉高，
+  18   1          delay7us();
+  19   1          SDA = 1; //数据线拉高
+  20   1          delay7us(); //延时，延时应在有效范围内必须 >4.7us
+  21   1          SDA = 0;  //拉低
+  22   1          delay7us(); //延时，延时应在有效范围内必须 >4us
+  23   1      }
+  24          
+  25          void stop()//终止信号   这时数据线电平变化在时钟高电平时，，上升沿有效
+  26          {   //SDA=0;
+  27   1          //delay7us();
+  28   1          /// SCL=1;
+  29   1          //delay7us();
+  30   1          // SDA=1;
+  31   1          //delay7us();
+  32   1          SDA = 0; // 数据线先低
+  33   1          delay7us();
+  34   1          SCL = 1; // 时钟线再高
+  35   1          delay7us();  //延时，延时应在有效范围内必须 >4us，SDA在高
+  36   1          SDA = 1;   //数据线拉高
+  37   1          delay7us();//延时，延时应在有效范围内必须 >4.7us
+  38   1      }
+  39          
+  40          void response()//应答信号，"0"
+  41          {   uchar i;
+  42   1          SCL = 1;   //时钟线拉高，
+  43   1          delay7us(); ///延时，延时应在有效范围内必须 >4us
+  44   1          while((SDA == 1) && (i < 200))i++; //等待应答，在 SCL>4us 内判断 SDA是否为“0”，为“0”表示应答，
+  45   1          //在i<200内，未收到应答信号，就默认收到应答，并退出。
+  46   1          SCL = 0; //时钟线拉低
+  47   1          delay7us();
+  48   1      }
+  49          
+  50          void noack() //非应答信号，“1”非应答也可不进行判断
+  51          {   uchar i;
+  52   1          //SDA=1;
+  53   1          // delay7us();
+  54   1          SCL = 1;
+  55   1          delay7us();//延时>4us,
+C51 COMPILER V9.52.0.0   IIC                                                               06/24/2020 16:35:58 PAGE 2   
+
+  56   1          while((SDA != 1) && (i < 100))i++; //在 SCL>4us 内判断 SDA是否为“1”，为“1”表示非应答
+  57   1          // 同上，
+  58   1          SCL = 0;
+  59   1          delay7us();
+  60   1          //SDA=0;
+  61   1      }
+  62          
+  63          void init_iic() //SCL,SDA初始化
+  64          {   SCL = 1;
+  65   1          SDA = 1;
+  66   1      }
+  67          
+  68          void write_byte(uchar date) //写一字节
+  69          {   uchar i;
+  70   1          /*      for(i=0;i<8;i++)
+  71   1          {
+  72   1            date=date<<1;//移位，高位移入CY中
+  73   1            SCL=0;
+  74   1              delay7us();
+  75   1            SDA=CY;
+  76   1            delay7us();
+  77   1            SCL=1;
+  78   1            delay7us();
+  79   1            }
+  80   1      
+  81   1            SCL=0;
+  82   1            delay7us();
+  83   1            SDA=1;
+  84   1            delay7us(); */
+  85   1      
+  86   1          SCL = 0;  //SCL拉低准备写入数据，SCL低电平时允许SDA数据变化（写入），SCL高电平时数据应保持稳定
+  87   1          delay7us(); //延时
+  88   1          for(i = 0; i < 8; i++)   //循环8次写入一个字节
+  89   1          {
+  90   2              if(date & 0x80) //高位在前，先写高位
+  91   2              {
+  92   3                  SDA = 1;   //写入 1
+  93   3              }
+  94   2              else
+  95   2              {
+  96   3                  SDA = 0;   //写入 0
+  97   3              }
+  98   2              SCL = 1; //SCL拉高
+  99   2              delay7us(); //延时
+ 100   2              date = date << 1; //移位，准备下一位数据
+ 101   2              SCL = 0; //SCL拉低，准备写下一位
+ 102   2              delay7us(); //
+ 103   2          }
+ 104   1          SDA = 1; //释放SDA数据线,以备接收应答信号“ 0 ”。
+ 105   1          delay7us();//
+ 106   1      }
+ 107          
+ 108          uchar read_byte() //读一个字节，
+ 109          {   uchar i, k;
+ 110   1          SCL = 0;   //
+ 111   1          delay7us();  //
+ 112   1          SDA = 1;   //释放SDA，以备通信
+ 113   1          delay7us();  //
+ 114   1          for(i = 0; i < 8; i++) //循环8次读出一个字节
+ 115   1          {   SCL = 1; //SCL为1时，SDA数据应保持稳定
+ 116   2              delay7us();
+ 117   2              //k=(k<<1)|SDA;
+C51 COMPILER V9.52.0.0   IIC                                                               06/24/2020 16:35:58 PAGE 3   
+
+ 118   2              k = k << 1; //移位
+ 119   2              if(SDA) //检测SDA（某位数据）是否为1，先读高位
+ 120   2                  k++;    //如果为 1 就 k++写入1,相当以 k 的第0位加了一个 1，下次进入时，因为k先移了一位
+ 121   2              // 就移入了第1位，8次就将高位移入第8位，其余位同理。
+ 122   2              SCL = 0; //SCL低电平时允许SDA数据变化，即将数据读出
+ 123   2              delay7us();//延时
+ 124   2          }
+ 125   1          return k; //返回
+ 126   1      }
+ 127          
+ 128          void iic_write(uchar add, uchar date) //写操作
+ 129          {   //init_iic();
+ 130   1          start(); //先发起始信号，操作之前必须
+ 131   1          write_byte(0xa0);//器件地址（1010 A0 A0 A0(000) R/W(0)）（访问该芯片的地址）
+ 132   1          //前4位为固定地址，出厂时给定。3位用户自定义地址，最后位"0"表示写入，
+ 133   1          response(); //给应答信号
+ 134   1          write_byte(add); //写入地址（将数据写入的地址，任意地址）
+ 135   1          response(); //给应答信号
+ 136   1          write_byte(date);//写入的数据
+ 137   1          response(); //给应答信号
+ 138   1          stop(); //发终止信号
+ 139   1      
+ 140   1      }
+ 141          uchar iic_read(uchar add) //读操作
+ 142          {   uchar dat;
+ 143   1          start(); //先发起始信号，操作之前必须
+ 144   1          write_byte(0xa0);//访问该芯片的地址（器件地址）
+ 145   1          response(); //给应答信号
+ 146   1          write_byte(add);// 访问该芯片内部的数据地址（写入数据的地址）
+ 147   1          response();//给应答信号
+ 148   1          start();  //先发起始信号，开始读，
+ 149   1          write_byte(0xa1);//器件地址（1010 A0 A0 A0(000) R/W(1)）（访问该芯片的地址）
+ 150   1          //前4位为固定地址，出厂时给定。3位用户自定义地址，最后位"1"表示读，
+ 151   1          response();//给应答信号
+ 152   1          dat = read_byte(); //读
+ 153   1          noack();//非应答，读数据无需应答
+ 154   1          stop();//终止操作
+ 155   1          return dat;//返回数据
+ 156   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    232    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

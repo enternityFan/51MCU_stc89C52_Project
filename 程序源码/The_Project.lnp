@@ -1,0 +1,5 @@
+"STARTUP.obj",
+"iic.obj",
+"main.obj" 
+TO "The_Project" 
+RAMSIZE(256) 

@@ -1,0 +1,162 @@
+C51 COMPILER V9.52.0.0   TEST_DS1302                                                       06/17/2020 15:59:40 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE TEST_DS1302
+OBJECT MODULE PLACED IN test_ds1302.OBJ
+COMPILER INVOKED BY: D:\Study\soft_ware\Keil4\C51\BIN\C51.EXE test_ds1302.c BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include<reg51.h>
+   2          #include "LCD1602.h"
+   3          #include "DS1302.h"
+   4          
+   5          #define uchar unsigned char
+   6          #define uint unsigned int
+   7          
+   8          sbit speaker=P2^4;
+   9          bit key_flag1=0,key_flag2=0;
+  10              
+  11          SYSTEMTIME adjusted;//????????
+  12          
+  13          uchar sec_add=0,min_add=0,hou_add=0,day_add=0,mon_add=0,yea_add=0;
+  14          uchar data_alarm[7]={0};
+  15          
+  16          
+  17          
+  18          /*********************************????****************************************************/
+  19          
+  20           
+  21          //??
+  22          void delayms(uint ms)
+  23          {
+  24   1        uchar t;
+  25   1        while(ms--)for(t=0;t<120;t++);
+  26   1      }
+  27          
+  28          /************************************??????****************************************/
+  29          
+  30           
+  31          /************************************************??????*********************************/
+  32          void changing(void) interrupt 0 using 0     //?????????,??????
+  33          {
+  34   1        if(key_flag1)
+  35   1          key_flag1=0;  
+  36   1        else 
+  37   1          key_flag1=1;
+  38   1      }
+  39          
+  40          
+  41          //????
+  42          uchar key_scan()
+  43          {
+  44   1        uchar tmp,keyno;
+  45   1        //?4??1,??4?
+  46   1        P1=0x0f;
+  47   1        delayms(1);
+  48   1        //???00001111???0000xxxx,x??1??0,????1
+  49   1        //?????????3?1??0,???0??1
+  50   1        tmp=P1^0x0f;//(^?C???????)
+  51   1        //???????0~3??????
+  52   1        switch(tmp)
+  53   1        {
+  54   2          case 1:keyno=0;break;
+  55   2          case 2:keyno=1;break;
+C51 COMPILER V9.52.0.0   TEST_DS1302                                                       06/17/2020 15:59:40 PAGE 2   
+
+  56   2          case 4:keyno=2;break;
+  57   2          case 8:keyno=3;break;
+  58   2          default:keyno=16;//????
+  59   2        }
+  60   1      
+  61   1        //?4??0,???
+  62   1        P1=0xf0;
+  63   1        delayms(1);
+  64   1      
+  65   1        //???11110000???xxxx0000,x??1??0,3???1
+  66   1        //????????4????4?,???????0??1,???0
+  67   1         tmp=P1>>4^0x0f;
+  68   1         //?0-3???????
+  69   1         switch(tmp)
+  70   1         {
+  71   2          case 1:keyno+=0;break;
+  72   2          case 2:keyno+=4;break;
+  73   2          case 4:keyno+=8;break;
+  74   2          case 8:keyno+=12;
+  75   2         }
+  76   1         
+  77   1         return keyno;
+  78   1      }
+  79          
+  80          
+  81          /*********************************???*************************************************/   
+  82          main()
+  83          {
+  84   1        uint i;
+  85   1        uchar p[] = "MODE 1";
+  86   1        uchar p1[8] = {'1'};
+  87   1        SYSTEMTIME T;
+  88   1      
+  89   1        EA=1;
+  90   1        EX0=1;
+  91   1        IT0=1;
+  92   1        EA=1;
+  93   1        EX1=1;
+  94   1        IT1=1;
+  95   1        init1602();
+  96   1        Initial_DS1302() ;
+  97   1      
+  98   1        while(1)
+  99   1        { /*
+ 100   2          write_com(0x80);
+ 101   2          write_string(p,6);
+ 102   2          //write_com(0xc0);
+ 103   2         // write_string(p2,2);
+ 104   2          DS1302_GetTime(&T) ;
+ 105   2          adjusted.Second=T.Second;
+ 106   2          adjusted.Minute=T.Minute;
+ 107   2          adjusted.Hour=T.Hour;
+ 108   2          adjusted.Week=T.Week;
+ 109   2          adjusted.Day=T.Day;
+ 110   2          adjusted.Month=T.Month;
+ 111   2          adjusted.Year=T.Year;
+ 112   2          
+ 113   2          for(i=0;i<9;i++)
+ 114   2        {
+ 115   2          adjusted.DateString[i]=T.DateString[i];
+ 116   2          adjusted.TimeString[i]=T.TimeString[i]; 
+ 117   2          }
+C51 COMPILER V9.52.0.0   TEST_DS1302                                                       06/17/2020 15:59:40 PAGE 3   
+
+ 118   2          DateToStr(&adjusted);
+ 119   2        TimeToStr(&adjusted);
+ 120   2        
+ 121   2          write_com(0xc2);
+ 122   2          write_string(adjusted.TimeString,8);
+ 123   2        delay(10);
+ 124   2        }  */
+ 125   2        p1[0] = key_scan();
+ 126   2            write_com(0xc2);
+ 127   2            write_string("16",1);
+ 128   2        
+ 129   2      
+ 130   2          delay(10);
+ 131   2      }
+ 132   1        
+ 133   1      }
+*** WARNING C280 IN LINE 84 OF test_ds1302.c: 'i': unreferenced local variable
+*** WARNING C280 IN LINE 87 OF test_ds1302.c: 'T': unreferenced local variable
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1217    ----
+   CONSTANT SIZE    =     18    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     38      57
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)

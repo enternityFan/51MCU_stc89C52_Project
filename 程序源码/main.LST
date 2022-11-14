@@ -1,0 +1,1119 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\Study\soft_ware\Keil4\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <intrins.h>
+   3          #include <string.h>
+   4          #include <stdio.h>
+   5          #include <stdlib.h>
+   6          #include "ds1302.h"
+   7          #include "lcd1602.h"
+   8          #include "iic.h"
+   9          #include "DS18B20.h"
+  10          
+  11          
+  12          /************¶Ë¿Ú¶¨Òå********************/
+  13          sbit CS = P3 ^ 5;  //ADC0832Æ¬Ñ¡
+  14          sbit CLK = P3 ^ 6; //ADC0832Ê±ÖÓ
+  15          sbit DIO = P3 ^ 7; //ADC0832ÊäÈëÊä³ö
+  16          sbit k1 = P1 ^ 0;
+  17          sbit k2 = P1 ^ 1;
+  18          sbit k3 = P1 ^ 2;
+  19          sbit k4 = P1 ^ 3;
+  20          sbit k5 = P1 ^ 4;
+  21          sbit k6 = P1 ^ 5;
+  22          sbit k7 = P1 ^ 6;
+  23          sbit k8 = P1 ^ 7;
+  24          sbit led = P3 ^ 4;
+  25          sbit beep = P3 ^ 3;
+  26          
+  27          
+  28          /*****************±äÁ¿¶¨Òå***********************************/
+  29          
+  30          uchar w1 = 0;
+  31          w2 = 0;
+  32          w3 = 0; //wÊÇweight·Ö½âÓÃµÄ
+  33          unsigned long maxweight = 400; // ³ÆµÄ×î´óÁ¿³Ì
+  34          unsigned long weight = 0; // µ±Ç°ÖØÁ¿£¬ÓÉ³Ó¶Á³ö
+  35          uint skin = 0; // ´æ·ÅÈ¥Æ¤µÄÆ¤ÖØ
+  36          
+  37          uchar sum = 0; // ¼ÇÂ¼Ò»¹²²âÊÔµÄÊýÁ¿
+  38          uchar bad = 0; // ¼ÇÂ¼ÁË²»·ûºÏÒªÇóµÄ¸öÊý
+  39          uchar choice_error = 10;
+  40          uchar choice_weight = 100; // ÓÃÀ´Ñ¡ÔñÊý×éerrorÓësteadyµÄÊý×éµÄµ¥ÔªµÄÖµµÄ
+  41          uchar pro_month, pro_day, pro_hour, pro_minute;
+  42          
+  43          
+  44          
+  45          
+  46          /****************Êý×é¶¨Òå*******************************/
+  47          
+  48          //uchar code Duan[21] = {0xc0,0xf9,0xa4,0xb0,0x99,0x92,0x82,0xf8,0x80,0x90,0x90,0x88,0x83,0xA7,0xA1,0x86,0
+             -x8E,0xbf,0xff,0xbf,0x7f}; // ×îºóÁ©¸öÊÇ-ºÍ¡£
+  49          //uchar p[3][6] = {"MODE 1","MODE 2","MODE 3",};
+  50          char key_status[8] = {0, 0, 0, 0, 0, 0, 0, 0}; // ÓÃÀ´´æ·ÅËÄ¸öÄ£Ê½µÄ°´¼üµÄµ±Ç°×´Ì¬£¬Ä¬ÈÏs1Îª1£¬¿ª»úÏÔÊ¾Ê±¼
+             -ä
+  51          //char v[5] = {0,0,0,0,0};
+  52          char code error[3] = {10, 20, 30}; // Îó²î´øÔÊÐí100g 200g 300gµÄÎó²î£¬°´ÕÕÐèÒª½øÐÐÑ¡Ôñ
+  53          uint code steady_weight[6] = {10, 50, 100, 150, 200, 250}; // ±ê×¼µÄÖØÁ¿
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 2   
+
+  54          
+  55          SYSTEMTIME adjusted;//´Ë´¦Îª½á¹¹Ìå¶¨Òå
+  56          
+  57          void delay_us(uint z); // us¼¶±ðÑÓ³Ù
+  58          void delayms(uint ms); // ms¼¶±ðÑÓ³Ù
+  59          void send(uchar dat); // ·¢ËÍÊý¾Ý´®¿Ú
+  60          void send_string(uchar *pp, uchar num); // ´®¿Ú·¢ËÍ×Ö·û´®
+  61          void send_informations(); // ´®¿Ú·¢ËÍÏûÏ¢µÄ·â×°º¯Êý
+  62          void init(); // ³õÊ¼»¯º¯Êý
+  63          void display_deal(); // ÏÔÊ¾´¦Àíº¯Êý£»¿ØÖÆLCD1602µÄÏÔÊ¾
+  64          void time_deal(); // Ê±¼ä´¦Àíº¯Êý
+  65          uchar weight_deal(uchar ch); // AD×ª»»º¯Êý
+  66          void key_deal(); // °´¼ü´¦Àíº¯Êý
+  67          
+  68          void delay_us(uint z)
+  69          {
+  70   1          while(z--);
+  71   1      
+  72   1      
+  73   1      }
+  74          void delayms(uint ms)
+  75          {
+  76   1          char t;
+  77   1          while(ms--)for(t = 0; t < 120; t++);
+  78   1      }
+  79          
+  80          
+  81          void send(uchar dat)
+  82          {
+  83   1          SBUF = dat;
+  84   1          while(TI == 0);
+  85   1          ;
+  86   1          TI = 0;
+  87   1      
+  88   1      }
+  89          
+  90          void send_string(uchar *pp, uchar num)
+  91          {
+  92   1          uchar i = 0;
+  93   1          for(i = 0; i < num; i++)
+  94   1          {
+  95   2              send(pp[i]);
+  96   2          }
+  97   1      }
+  98          
+  99          
+ 100          void send_informations()
+ 101          {   uchar i = 0;
+ 102   1          ET1 = 1;
+ 103   1          TR1 = 1;
+ 104   1          ES = 1;
+ 105   1          // send_string("the sum :",8);
+ 106   1          // w1 = sum/10;
+ 107   1          // w2 = sum%10;
+ 108   1          // send(w1+'0');
+ 109   1          // send(w2+'0');
+ 110   1          //ÏÈ·¢ËÍ±ðµÄÊý¾Ý
+ 111   1          /*******************************ÉÏ´ÎµÄÊ±¼ä****************************************/
+ 112   1          send_string("\r\n\r\n\r\n\r\n", 8);
+ 113   1          send_string("the last record time:\r\n", 23);
+ 114   1          w1 = pro_month / 10;
+ 115   1          w2 = pro_month % 10;
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 3   
+
+ 116   1          send(w1 + '0');
+ 117   1          send(w2 + '0');
+ 118   1          send('-');
+ 119   1      
+ 120   1          w1 = pro_day / 10;
+ 121   1          w2 = pro_day % 10;
+ 122   1          send(w1 + '0');
+ 123   1          send(w2 + '0');
+ 124   1          send(' ');
+ 125   1      
+ 126   1          w1 = pro_hour / 10;
+ 127   1          w2 = pro_hour % 10;
+ 128   1          send(w1 + '0');
+ 129   1          send(w2 + '0');
+ 130   1          send(':');
+ 131   1          w1 = pro_minute / 10;
+ 132   1          w2 = pro_minute % 10;
+ 133   1          send(w1 + '0');
+ 134   1          send(w2 + '0');
+ 135   1          delay(500);
+ 136   1          send_string("\r\n\r\n\r\n\r\n", 8);
+ 137   1          /*******************************ÉÏ´ÎµÄ±ê×¼Öµ****************************************/
+ 138   1          send_string("the last record standard:\r\n", 27);
+ 139   1          w1 = choice_error / 10;
+ 140   1          w2 = choice_error % 10;
+ 141   1          send_string("the error:", 10);
+ 142   1          send(w1 + '0');
+ 143   1          send(w2 + '0');
+ 144   1      
+ 145   1          send_string("   the weight:", 14);
+ 146   1          w1 = choice_weight / 100;
+ 147   1          w2 = choice_weight % 100 / 10;
+ 148   1          w3 = choice_weight % 10;
+ 149   1          send(w1 + '0');
+ 150   1          send(w2 + '0');
+ 151   1          send(w3 + '0');
+ 152   1          send_string("kg", 2);
+ 153   1          send_string("\r\n\r\n\r\n\r\n", 8);
+ 154   1          delay(500);
+ 155   1          /*******************************ÉÏ´ÎµÄÊý¾Ý****************************************/
+ 156   1          send_string("the last record data:\r\n", 23);
+ 157   1          send_string("the sum:", 8);
+ 158   1          w1 = sum / 10;
+ 159   1          w2 = sum % 10;
+ 160   1          send(w1 + '0');
+ 161   1          send(w2 + '0');
+ 162   1          send_string("   the bad:", 11);
+ 163   1          w1 = bad / 10;
+ 164   1          w2 = bad % 10;
+ 165   1          send(w1 + '0');
+ 166   1          send(w2 + '0');
+ 167   1          send_string("\r\n\r\n\r\n\r\n", 8);
+ 168   1          delay(500);
+ 169   1      
+ 170   1          /*******************************ÉÏ´ÎµÄ Ã¿¸ö Êý¾Ý****************************************/
+ 171   1          send_string("the detail data:\r\n", 18);
+ 172   1      
+ 173   1          do
+ 174   1          {   i++;
+ 175   2              // Ã¿´ÎÑ­»·ËÍ³öÈ¥Ò»¸ö
+ 176   2              w1 = i / 100;
+ 177   2              w2 = i % 100 / 10;
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 4   
+
+ 178   2              w3 = i % 10;
+ 179   2              send_string("the times: ", 10);
+ 180   2      
+ 181   2              send(w1 + '0');
+ 182   2              send(w2 + '0');
+ 183   2              send(w3 + '0');
+ 184   2              weight = iic_read(0xff - i); // ¶Á³ö´æÔÚÕâÀïµÄÖØÁ¿£¬ÕýºÃ¶ÔÓ¦
+ 185   2              w1 = weight / 100;
+ 186   2              w2 = weight % 100 / 10;
+ 187   2              w3 = weight % 10;
+ 188   2              send_string(" the weight: ", 14);
+ 189   2              send(w1 + '0');
+ 190   2              send('.');
+ 191   2              send(w2 + '0');
+ 192   2              send(w3 + '0');
+ 193   2              send_string("kg\r\n", 4);
+ 194   2              delayms(3000);
+ 195   2              led = ~led; // ×´Ì¬ÌáÊ¾
+ 196   2          } while(i <= sum);
+ 197   1          // Õâ¸öÊ±ºò³É¹¦°ÑÊý¾ÝÈ«ËÍ³öÈ¥ÁË
+ 198   1      
+ 199   1          key_status[7] = 2; // ×Ô¶¯ÖÃ2£»
+ 200   1          ET1 = 0;
+ 201   1          TR1 = 0;
+ 202   1          ES = 0;
+ 203   1          led = 1;
+ 204   1      }
+ 205          
+ 206          void init()
+ 207          {
+ 208   1      
+ 209   1      
+ 210   1          EA = 1;
+ 211   1          //IP=0x10;
+ 212   1          //¶¨Ê±Æ÷Ïà¹Ø ----------------------------------------------------------------------------------
+ 213   1          ET1 = 0;
+ 214   1          ET0 = 0;
+ 215   1          TMOD = 0x21;
+ 216   1          TR0 = 0;
+ 217   1          TR1 = 0;
+ 218   1          TH0 = (65536 - 50000) / 256;
+ 219   1          TL0 = (65536 - 50000) % 256;
+ 220   1      
+ 221   1      
+ 222   1      
+ 223   1          // ´®¿ÚÏà¹Ø9600²¨ÌØÂÊ--------------------------------------------------------
+ 224   1          TH1 = 0xfd;
+ 225   1          TL1 = 0xfd;
+ 226   1          ES = 0;
+ 227   1          SCON = 0x40;
+ 228   1          init1602();
+ 229   1          Initial_DS1302() ;
+ 230   1          led = 1; // ³õÊ¼»¯Ï¨Ãð×´Ì¬
+ 231   1      
+ 232   1      
+ 233   1      }
+ 234          
+ 235          /***************************ÏÔÊ¾´¦Àíº¯Êý*******************************************************/
+ 236          void display_deal()
+ 237          {
+ 238   1          uint temp;
+ 239   1          uchar intT; // ÎÂ¶ÈÊ¹ÓÃµÄ
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 5   
+
+ 240   1          bit res;
+ 241   1          // µÚÒ»ÐÐÏÔÊ¾µ±Ç°µÄÄ£Ê½ºÍÆäËûÏûÏ¢
+ 242   1          // Ê±¼äÄ£Ê½
+ 243   1          if(key_status[1] == 0 && key_status[2] == 0 && key_status[3] == 0 && key_status[7] == 0)
+ 244   1          {
+ 245   2              write_com(0x80);
+ 246   2              write_string("MODE 1", 6);
+ 247   2      
+ 248   2              // ÏÔÊ¾Êý×Ö
+ 249   2              DateToStr(&adjusted);
+ 250   2              TimeToStr(&adjusted);
+ 251   2              write_com(0x88);
+ 252   2              write_string(adjusted.DateString, 8);
+ 253   2              write_com(0xc2);
+ 254   2              write_string(adjusted.TimeString, 8);
+ 255   2          }
+ 256   1          if(key_status[1] != 0)
+ 257   1          {
+ 258   2              if(weight - skin < 0)
+ 259   2                  weight = 0;
+ 260   2              else
+ 261   2                  weight = weight - skin; // È¥Æ¤ºóµÄÖµ
+ 262   2      
+ 263   2              write_com(0x80);
+ 264   2              write_string("MODE 2", 6);
+ 265   2      
+ 266   2              //µÚÒ»ÐÐÏÔÊ¾×î´óµÄÖØÁ¿£¬µÚ¶þÐÐÏÔÊ¾µ±Ç°µÄÖØÁ¿
+ 267   2              write_com(0x88);
+ 268   2              write_string("MAX:", 4);
+ 269   2              w1 = maxweight % 1000 / 100;
+ 270   2              w2 = maxweight % 100 / 10;
+ 271   2              w3 = maxweight % 10;
+ 272   2              write_data(w1 + 0x30);
+ 273   2              write_data('.');
+ 274   2              write_data(w2 + 0x30);
+ 275   2              write_data(w3 + 0x30);
+ 276   2              write_com(0xc0);
+ 277   2              write_string("WEIGHT:", 7);
+ 278   2              w1 = weight % 1000 / 100;
+ 279   2              w2 = weight % 100 / 10;
+ 280   2              w3 = weight % 10;
+ 281   2              write_data(w1 + 0x30);
+ 282   2              write_data('.');
+ 283   2              write_data(w2 + 0x30);
+ 284   2              write_data(w3 + 0x30);
+ 285   2              write_string("KG", 2);
+ 286   2          }
+ 287   1          if(key_status[2] != 0)
+ 288   1          {
+ 289   2      
+ 290   2              write_com(0x80);
+ 291   2              write_string("MODE 3", 6);
+ 292   2              if(key_status[2] < 3)
+ 293   2              {
+ 294   3                  write_com(0x88);
+ 295   3                  write_string("ERROR:", 6);
+ 296   3                  w1 = choice_error / 10;
+ 297   3                  w2 = choice_error % 10;
+ 298   3      
+ 299   3                  write_data(w1 + 0x30);
+ 300   3                  write_data(w2 + 0x30);
+ 301   3                  write_com(0xc0);
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 6   
+
+ 302   3                  write_string("WEIGHT:", 7);
+ 303   3                  w1 = choice_weight / 100;
+ 304   3                  w2 = choice_weight % 100 / 10;
+ 305   3                  w3 = choice_weight % 10;
+ 306   3                  write_data(w1 + 0x30);
+ 307   3                  write_data('.');
+ 308   3                  write_data(w2 + 0x30);
+ 309   3                  write_data(w3 + 0x30);
+ 310   3                  write_string("KG", 2);
+ 311   3              }
+ 312   2              else if(key_status[2] == 3)
+ 313   2              {
+ 314   3                  // ÕâÒ»ÐÐµÄsumÖ÷ÒªÊÇÎªÁË·´Ó³µ±Ç°¼ì²âµÄÊýÁ¿
+ 315   3                  write_com(0x88);
+ 316   3                  write_string("SUM:", 4);
+ 317   3                  w1 = sum / 10;
+ 318   3                  w2 = sum % 10;
+ 319   3                  write_data(w1 + 0x30);
+ 320   3                  write_data(w2 + 0x30);
+ 321   3                  write_com(0xc0);
+ 322   3                  write_string("WEIGHT:", 7);
+ 323   3                  w1 = weight / 100;
+ 324   3                  w2 = weight % 100 / 10;
+ 325   3                  w3 = weight % 10;
+ 326   3                  write_data(w1 + 0x30);
+ 327   3                  write_data('.');
+ 328   3                  write_data(w2 + 0x30);
+ 329   3                  write_data(w3 + 0x30);
+ 330   3                  write_string("KG", 2);
+ 331   3      
+ 332   3              }
+ 333   2              else
+ 334   2              {
+ 335   3                  write_com(0x80);
+ 336   3                  write_string("SAVING DATA...", 14);
+ 337   3                  delay(3000); // ÏÔÊ¾3s Ö»ÊÇÎªÁËÔö¼ÓÈË»ú½»»¥ÓÑºÃ¶È
+ 338   3                  key_status[2] = 0;
+ 339   3      
+ 340   3              }
+ 341   2      
+ 342   2          }
+ 343   1          if(key_status[3] != 0)
+ 344   1          {
+ 345   2              if(key_status[3] == 1)
+ 346   2              {
+ 347   3                  write_com(0x80);
+ 348   3                  write_string("the last time:", 14);
+ 349   3                  write_com(0xc0);
+ 350   3                  //weight = iic_read(6); // ÔÂ·Ý ÕâÀïÓÃweight»¹ÊÇÎªÁËÊ¡±äÁ¿
+ 351   3                  w1 = pro_month / 10;
+ 352   3                  w2 = pro_month % 10;
+ 353   3                  write_data(w1 + 0x30);
+ 354   3                  write_data(w2 + 0x30);
+ 355   3                  write_data('-');
+ 356   3                  //weight = iic_read(5); // ÈÕ ÕâÀïÓÃweight»¹ÊÇÎªÁËÊ¡±äÁ¿
+ 357   3                  w1 = pro_day / 10;
+ 358   3                  w2 = pro_day % 10;
+ 359   3                  write_data(w1 + 0x30);
+ 360   3                  write_data(w2 + 0x30);
+ 361   3                  write_data(' ');
+ 362   3                  //weight = iic_read(4); // Ð¡Ê± ÕâÀïÓÃweight»¹ÊÇÎªÁËÊ¡±äÁ¿
+ 363   3                  w1 = pro_hour / 10;
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 7   
+
+ 364   3                  w2 = pro_hour % 10;
+ 365   3                  write_data(w1 + 0x30);
+ 366   3                  write_data(w2 + 0x30);
+ 367   3                  write_data(':');
+ 368   3                  //weight = iic_read(3); // ·ÖÖÓ ÕâÀïÓÃweight»¹ÊÇÎªÁËÊ¡±äÁ¿
+ 369   3                  w1 = pro_minute / 10;
+ 370   3                  w2 = pro_minute % 10;
+ 371   3                  write_data(w1 + 0x30);
+ 372   3                  write_data(w2 + 0x30);
+ 373   3      
+ 374   3              }
+ 375   2              else if(key_status[3] == 2)
+ 376   2              {
+ 377   3                  // ÕâÊ±ÏÔÊ¾µ±Ê±µÄ±ê×¼
+ 378   3                  write_com(0x80);
+ 379   3                  write_string("STD: ", 5);
+ 380   3                  write_string(" ERROR:", 7);
+ 381   3                  //weight = iic_read(8); // Îó²î
+ 382   3                  w1 = choice_error / 10;
+ 383   3                  w2 = choice_error % 10;
+ 384   3                  write_data(w1 + 0x30);
+ 385   3                  write_data(w2 + 0x30);
+ 386   3                  write_com(0xc0);
+ 387   3                  write_string("WEIGHT:   ", 10);
+ 388   3                  //weight = iic_read(7); // Ñ¡ÔñµÄ±ê×¼ÖØÁ¿
+ 389   3                  w1 = choice_weight / 100;
+ 390   3                  w2 = choice_weight % 100 / 10;
+ 391   3                  w3 = choice_weight % 10;
+ 392   3      
+ 393   3                  write_data(w1 + 0x30);
+ 394   3                  write_data(w2 + 0x30);
+ 395   3                  write_data(w3 + 0x30);
+ 396   3                  write_string("KG", 2);
+ 397   3              }
+ 398   2              else  if(key_status[3] == 3)
+ 399   2              {
+ 400   3                  // ÕâÊ±ÏÔÊ¾µ±Ê±µÄÊý¾Ý
+ 401   3                  write_com(0x80);
+ 402   3                  write_string("DATA:", 5);
+ 403   3                  write_string(" SUM:", 5);
+ 404   3                  //weight = iic_read(1);
+ 405   3                  w1 = sum / 10;
+ 406   3                  w2 = sum % 10;
+ 407   3                  write_data(w1 + 0x30);
+ 408   3                  write_data(w2 + 0x30);
+ 409   3                  write_com(0xc0);
+ 410   3                  write_string("BAD:", 4);
+ 411   3                  //weight = iic_read(2);
+ 412   3                  w1 = bad / 10;
+ 413   3                  w2 = bad % 10;
+ 414   3                  write_data(w1 + 0x30);
+ 415   3                  write_data(w2 + 0x30);
+ 416   3              }
+ 417   2              else
+ 418   2              {
+ 419   3                  write_com(0x80);
+ 420   3                  write_string("send data?", 10);
+ 421   3                  write_com(0xc0);
+ 422   3                  write_string("YES          NO", 15);
+ 423   3              }
+ 424   2      
+ 425   2          }
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 8   
+
+ 426   1      
+ 427   1          if(key_status[7] != 0)
+ 428   1          {
+ 429   2      
+ 430   2              if(key_status[7] == 6)
+ 431   2              {
+ 432   3                  write_com(0x80);
+ 433   3                  write_string("temperature:", 12);
+ 434   3                  write_com(0xc0);
+ 435   3      
+ 436   3      
+ 437   3                  res = Get18B20Temp(&temp);
+*** WARNING C182 IN LINE 437 OF main.c: pointer to different objects
+ 438   3                  if(res) // ¶ÁÈ¡³É¹¦
+ 439   3                  {
+ 440   4                      intT = temp >> 4; //·ÖÀë³öÎÂ¶ÈÖµÕûÊý²¿·Ö
+ 441   4      
+ 442   4                      w1 = intT / 100;
+ 443   4                      w2 = intT % 100 / 10;
+ 444   4                      w3 = intT % 10;
+ 445   4                      write_data(w1 + 0x30);
+ 446   4                      write_data(w2 + 0x30);
+ 447   4                      write_data(w3 + 0x30);
+ 448   4                      write_data(' ');
+ 449   4                      write_data('C');
+ 450   4      
+ 451   4                  }
+ 452   3              }
+ 453   2              else
+ 454   2              {
+ 455   3                  if(key_status[7] == 1)
+ 456   3                  {
+ 457   4                      write_com(0x80);
+ 458   4                      write_string("SENDING....", 11);
+ 459   4                  }
+ 460   3                  else
+ 461   3                  {
+ 462   4                      write_com(0x80);
+ 463   4                      write_string("SEND SUCCEESS!", 13);
+ 464   4                      write_com(0xc0);
+ 465   4                      write_string("PRESS AND BACK..", 16);
+ 466   4      
+ 467   4                  }
+ 468   3              }
+ 469   2      
+ 470   2      
+ 471   2          }
+ 472   1      
+ 473   1      }
+ 474          
+ 475          /**************************************Ê±¼ä´¦Àíº¯Êý*******************************************************
+             -******/
+ 476          void time_deal()
+ 477          {
+ 478   1      
+ 479   1          if(adjusted.Second > 59)
+ 480   1          {
+ 481   2              adjusted.Second = adjusted.Second % 60;
+ 482   2              adjusted.Minute++;
+ 483   2          }
+ 484   1          if(adjusted.Minute > 59)
+ 485   1          {
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 9   
+
+ 486   2              adjusted.Minute = adjusted.Minute % 60;
+ 487   2              adjusted.Hour++;
+ 488   2          }
+ 489   1          if(adjusted.Hour > 23)
+ 490   1          {
+ 491   2              adjusted.Hour = adjusted.Hour % 24;
+ 492   2              adjusted.Day++;
+ 493   2          }
+ 494   1          if(adjusted.Day > 31)
+ 495   1              adjusted.Day = adjusted.Day % 31;
+ 496   1          if(adjusted.Month > 12)
+ 497   1              adjusted.Month = adjusted.Month % 12;
+ 498   1          if(adjusted.Year > 100)
+ 499   1              adjusted.Year = adjusted.Year % 100;
+ 500   1      
+ 501   1          // °É´¦ÀíºóµÄÊ±¼äÐ´ÈëDS1302
+ 502   1          DS1302_SetTime(DS1302_SECOND, adjusted.Second);
+ 503   1          DS1302_SetTime(DS1302_MINUTE, adjusted.Minute);
+ 504   1          DS1302_SetTime(DS1302_HOUR, adjusted.Hour);
+ 505   1          DS1302_SetTime(DS1302_DAY, adjusted.Day);
+ 506   1          DS1302_SetTime(DS1302_MONTH, adjusted.Month);
+ 507   1          DS1302_SetTime(DS1302_YEAR, adjusted.Year);
+ 508   1          delayms(1);
+ 509   1      }
+ 510          
+ 511          
+ 512          /************************************* AD×ª»»º¯Êý******************************************************/
+ 513          uchar weight_deal(uchar ch) // ·â×°ÍêºÃ£¬Í¬Ê±ÓÃÓÚµ¥¸ö¼ì²âºÍ¶à¸öµÄ¼ì²â
+ 514          {
+ 515   1          uchar i, dat1 = 0, dat2 = 0;
+ 516   1      
+ 517   1          CS  = 0;
+ 518   1          _nop_();
+ 519   1          _nop_();                  //Æ¬Ñ¡Ê¹ÄÜ£¬µÍµçÆ½ÓÐÐ§
+ 520   1          CLK = 0;
+ 521   1          _nop_();
+ 522   1          _nop_();                    //Ð¾Æ¬Ê±ÖÓÊäÈë
+ 523   1          DIO = 1;
+ 524   1          _nop_();
+ 525   1          _nop_();
+ 526   1          CLK = 1;
+ 527   1          _nop_();
+ 528   1          _nop_();
+ 529   1          //µÚ1¸öÏÂ½µÑØÖ®Ç°£¬ÉèDI=1/0
+ 530   1          //Ñ¡Ôñµ¥¶Ë/²î·Ö(SGL/DIF)Ä£Ê½ÖÐµÄµ¥¶ËÊäÈëÄ£Ê½
+ 531   1          CLK = 0;
+ 532   1          DIO = 1;
+ 533   1          _nop_();
+ 534   1          _nop_();
+ 535   1          CLK = 1;
+ 536   1          _nop_();
+ 537   1          _nop_();
+ 538   1          //µÚ2¸öÏÂ½µÑØÖ®Ç°,ÉèÖÃDI=0/1,Ñ¡ÔñCHO/CH1
+ 539   1      
+ 540   1          CLK = 0;
+ 541   1      
+ 542   1          if(ch == 0)
+ 543   1              DIO = 0;  //Í¨µÀ0 ÄÚ²¿µçÑ¹²âÊÔ
+ 544   1          else DIO = 1; //Í¨µÀ1
+ 545   1      
+ 546   1          _nop_();
+ 547   1          _nop_();
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 10  
+
+ 548   1      
+ 549   1          CLK = 1;
+ 550   1          _nop_();
+ 551   1          _nop_();
+ 552   1          //µÚ3¸öÏÂ½µÑØÖ®Ç°,ÉèÖÃDI=1
+ 553   1          CLK = 0;
+ 554   1          DIO = 1;
+ 555   1          _nop_();
+ 556   1          _nop_();
+ 557   1          //µÚ4-11¸öÏÂ½µÑØ¶ÁÊý¾Ý(MSB->LSB)
+ 558   1          for(i = 0; i < 8; i++)
+ 559   1          {
+ 560   2              CLK = 1;
+ 561   2              _nop_();
+ 562   2              _nop_();
+ 563   2              CLK = 0;
+ 564   2              _nop_();
+ 565   2              _nop_();
+ 566   2              dat1 = dat1 << 1 | DIO;
+ 567   2          }
+ 568   1          //µÚ11-18¸öÏÂ½µÑØ¶ÁÊý¾Ý(LSB->MSB)
+ 569   1          for(i = 0; i < 8; i++)
+ 570   1          {
+ 571   2              CLK = 1;
+ 572   2              _nop_();
+ 573   2              _nop_();
+ 574   2              CLK = 0;
+ 575   2              _nop_();
+ 576   2              _nop_();
+ 577   2              dat2 = dat2 << ((uchar)(DIO) << i);
+ 578   2          }
+ 579   1          CS = 1;//È¡ÏûÆ¬Ñ¡Ò»¸öÖÜÆÚ½áÊø
+ 580   1          //Èç¹ûMSB->LSBºÍLSB->MSB¶ÁÈ¡µÄ½á¹ûÏàÍ¬,Ôò·µ»Ø¶ÁÈ¡µÄ½á¹û,·ñÔò·µ»Ø0
+ 581   1          return dat1;
+ 582   1      //  return (dat1 == dat2) ? dat1:0;//È¡ÏûÐ£Ñé
+ 583   1      
+ 584   1      
+ 585   1      }
+ 586          
+ 587          /*******************************************°´¼ü¼ì²â´¦Àíº¯Êý**********************************************
+             -****/
+ 588          void key_deal()
+ 589          {
+ 590   1          static uchar tmp1 = 0;
+ 591   1          static uchar tmp2 = 0;
+ 592   1          char i = 0;
+ 593   1          ET0 = 1;
+ 594   1          TR0 = 1;
+ 595   1          if(k1 == 0)
+ 596   1          {
+ 597   2              delayms(10);
+ 598   2              if(k1 == 0 && key_status[1] == 0 && key_status[2] == 0 && key_status[3] == 0 && key_status[7] == 0
+             -)
+ 599   2              {
+ 600   3                  //    Ö»ÔÚÊ±¼äÄ£Ê½ÏÂ½øÐÐÎÂ¶È²É¼¯ ºÍÎÂ¶ÈÏÔÊ¾Ä£Ê½ÏÂ
+ 601   3      
+ 602   3                  key_status[0]++;
+ 603   3                  if(key_status[0] == 7) {
+ 604   4                      key_status[0] = 0;   // ×î¶à°´7´Î¿ÉÒÔÐÞ¸ÄÄêµÄ´óÐ¡Ê±¼ä
+ 605   4                  }
+ 606   3                  write_com(0x01); // ÇåÆÁ ·ÀÖ¹ÇÐ»»Ä£Ê½ºó»¨ÆÁ
+ 607   3              }
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 11  
+
+ 608   2      
+ 609   2              while(!k1);
+ 610   2          }
+ 611   1      
+ 612   1          if(k2 == 0)
+ 613   1          {
+ 614   2              delayms(10);
+ 615   2              if(k2 == 0 && key_status[0] == 0 && key_status[2] == 0 && key_status[3] == 0 && key_status[7] == 0
+             -)
+ 616   2              {
+ 617   3                  ET0 = 0;
+ 618   3                  TR0 = 0;
+ 619   3                  key_status[1]++;
+ 620   3                  if(key_status[1] == 2)
+ 621   3                  {
+ 622   4                      // ³õÊ¼»¯  Í¬Ê±³õÊ¼»¯Ö¸Ê¾µÆºÍ·äÃùÆ÷ ·ÀÖ¹bug
+ 623   4                      key_status[1] = 0;
+ 624   4                      led = 1;
+ 625   4                      beep = 1;
+ 626   4                      skin = 0;
+ 627   4                  }
+ 628   3                  write_com(0x01); // ÇåÆÁ ·ÀÖ¹ÇÐ»»Ä£Ê½ºó»¨ÆÁ
+ 629   3              }
+ 630   2      
+ 631   2              while(!k2);
+ 632   2          }
+ 633   1          if(k3 == 0)
+ 634   1          {
+ 635   2              delayms(10);
+ 636   2              if(k3 == 0 && key_status[0] == 0 && key_status[1] == 0 && key_status[3] == 0 && key_status[7] == 0
+             -)
+ 637   2              {
+ 638   3      
+ 639   3                  key_status[2]++;
+ 640   3                  if(key_status[2] == 3)
+ 641   3                  {
+ 642   4                      ET0 = 1;
+ 643   4                      TR0 = 1;
+ 644   4                      // ´ò¿ª´®¿Ú£¬Ã¿´Î³É¹¦¼ÇÂ¼ºó£¬¾Í°ÑÊý¾Ý·¢ËÍµ½PC¶Ë
+ 645   4      
+ 646   4                      skin = 0;
+ 647   4                      sum = 0;
+ 648   4                      bad = 0;
+ 649   4      
+ 650   4      
+ 651   4                  }
+ 652   3                  if(key_status[2] == 4)
+ 653   3                  {
+ 654   4      
+ 655   4                      ET0 = 0;
+ 656   4                      TR0 = 0;
+ 657   4                      led = 1; // ½áÊøºóÏ¨ÃðledµÆ
+ 658   4                      /*ET1 = 0;
+ 659   4                      TR1 = 0;
+ 660   4                      ES = 0;*/
+ 661   4                      skin = 0;
+ 662   4                      // °ÉÊý×Ö´æ´¢½øÈ¥
+ 663   4                      iic_write(1, sum);
+ 664   4                      delayms(200);
+ 665   4                      iic_write(2, bad);
+ 666   4                      delayms(200);
+ 667   4                      //´Ó3-6´æ·Å½áÊøÊ±µÄÊ±¼ä¡£
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 12  
+
+ 668   4                      iic_write(3, adjusted.Minute);
+ 669   4                      delayms(200);
+ 670   4                      iic_write(4, adjusted.Hour);
+ 671   4                      delayms(200);
+ 672   4                      iic_write(5, adjusted.Day);
+ 673   4                      delayms(200);
+ 674   4                      iic_write(6, adjusted.Month);
+ 675   4                      delayms(200);
+ 676   4                      iic_write(7, choice_weight);
+ 677   4                      delayms(200);
+ 678   4                      iic_write(8, choice_error);
+ 679   4                      // ÓÉÏÔÊ¾ÆÁµÄÏà¹Ø×´Ì¬ÖÃ0£¬
+ 680   4      
+ 681   4      
+ 682   4                  }
+ 683   3      
+ 684   3      
+ 685   3                  write_com(0x01); // ÇåÆÁ ·ÀÖ¹ÇÐ»»Ä£Ê½ºó»¨ÆÁ
+ 686   3              }
+ 687   2      
+ 688   2              while(!k3);
+ 689   2          }
+ 690   1      
+ 691   1      
+ 692   1          if(k4 == 0)
+ 693   1          {
+ 694   2              delayms(10);
+ 695   2              if(k4 == 0 && key_status[0] == 0 && key_status[1] == 0 && key_status[2] == 0 && key_status[7] == 0
+             -) // ÅÐ¶ÏÈç¹ûÏÖÔÚÊÇÏÔÊ¾Ê±¼äµÄÄ£Ê½µÄ»°£¬ÄÇÃ´ÎÒ¾ÍÏÔÊ¾
+ 696   2              {
+ 697   3                  ET0 = 0;
+ 698   3                  TR0 = 0;
+ 699   3                  key_status[3]++;
+ 700   3                  switch(key_status[3])
+ 701   3                  {
+ 702   4                  case 1: {
+ 703   5                      pro_month = iic_read(6);
+ 704   5                      delayms(3);
+ 705   5                      pro_day = iic_read(5);
+ 706   5                      delayms(3);
+ 707   5                      pro_hour = iic_read(4);
+ 708   5                      delayms(3);
+ 709   5                      pro_minute = iic_read(3);
+ 710   5                      delayms(3);
+ 711   5                      break;
+ 712   5                  }
+ 713   4                  case 2: {
+ 714   5                      choice_error = iic_read(8);
+ 715   5                      delayms(3);
+ 716   5                      choice_weight = iic_read(7);
+ 717   5                      delayms(3);
+ 718   5                      break;
+ 719   5                  }
+ 720   4                  case 3: {
+ 721   5                      sum = iic_read(1);
+ 722   5                      delayms(3);
+ 723   5                      bad = iic_read(2);
+ 724   5                      break;
+ 725   5                  }
+ 726   4      
+ 727   4                  default:
+ 728   4                      break;
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 13  
+
+ 729   4                  }
+ 730   3                  if(key_status[3] == 5)key_status[3] = 0; // ËÄ¸öÄ£Ê½ ÏÔÊ¾µ±Ê±µÄÊ±¼ä£¬È»ºóÔÙÏÔÊ¾µ±Ê±µÄ²âÁ¿µÄ±ê×
+             -¼£¨Îó²î±ê×¼¼°±ê×¼ÖØÁ¿),ÔÙÏÔÊ¾×ÜÊý¾Ý;½Ó×ÅÔÙ°´ÔòÑ¯ÎÊÊÇ·ñÒªÏêÏ¸µÄÊý¾Ý£¬Èô°´È·¶¨°´Å¥£¬Ôò´®¿Ú·¢ËÍ
+ 731   3                  write_com(0x01); // ÇåÆÁ ·ÀÖ¹ÇÐ»»Ä£Ê½ºó»¨ÆÁ
+ 732   3              }
+ 733   2          }
+ 734   1      
+ 735   1      
+ 736   1      
+ 737   1          if(k5 == 0) // Ôö¼Ó±»°´ÏÂ
+ 738   1          {
+ 739   2              delay(10);
+ 740   2              if(k5 == 0 & (key_status[0] != 0 | key_status[1] != 0 | key_status[2] != 0))
+ 741   2              {
+ 742   3                  ET0 = 0;
+ 743   3                  TR0 = 0;
+ 744   3                  // Ò»ÖÖÒ»ÖÖÇé¿öÀ´ÅÐ¶Ï
+ 745   3                  if(key_status[0] != 0)
+ 746   3                  {
+ 747   4                      switch(key_status[0])
+ 748   4                      {
+ 749   5                      case 1:
+ 750   5                          adjusted.Second++;
+ 751   5                          break;
+ 752   5                      case 2:
+ 753   5                          adjusted.Minute++;
+ 754   5                          break;
+ 755   5                      case 3:
+ 756   5                          adjusted.Hour++;
+ 757   5                          break;
+ 758   5                      case 4:
+ 759   5                          adjusted.Day++;
+ 760   5                          break;
+ 761   5                      case 5:
+ 762   5                          adjusted.Month++;
+ 763   5                          break;
+ 764   5                      case 6:
+ 765   5                          adjusted.Year++;
+ 766   5                          break;
+ 767   5                      default:
+ 768   5                          break;
+ 769   5                      }
+ 770   4                  }
+ 771   3      
+ 772   3      
+ 773   3                  if(key_status[1] != 0)
+ 774   3                  {
+ 775   4                      maxweight++;
+ 776   4                  }
+ 777   3      
+ 778   3                  if(key_status[2] != 0)
+ 779   3                  {
+ 780   4                      switch(key_status[2])
+ 781   4                      {
+ 782   5                      case 1: {
+ 783   6                          if(tmp1 != 5) {
+ 784   7                              tmp1++;
+ 785   7                          }
+ 786   6                          choice_weight = steady_weight[tmp1];
+ 787   6                          break;
+ 788   6                      }
+ 789   5                      case 2: {
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 14  
+
+ 790   6                          if(tmp2 != 2) {
+ 791   7                              tmp2++;
+ 792   7                          }
+ 793   6                          choice_error = error[tmp2];
+ 794   6                          break;
+ 795   6                      }
+ 796   5                      default:
+ 797   5                          break;
+ 798   5                      }
+ 799   4                  }
+ 800   3      
+ 801   3      
+ 802   3      
+ 803   3      
+ 804   3      
+ 805   3      
+ 806   3                  while(!k5);
+ 807   3              }
+ 808   2          }
+ 809   1      
+ 810   1          if(k6 == 0)
+ 811   1          {
+ 812   2              delayms(10);
+ 813   2      
+ 814   2              if(k6 == 0 && (key_status[0] != 0 | key_status[1] != 0 | key_status[2] != 0))
+ 815   2              {   ET0 = 0;
+ 816   3                  TR0 = 0;
+ 817   3                  if(key_status[0] != 0)
+ 818   3                  {
+ 819   4                      switch(key_status[0])
+ 820   4                      {
+ 821   5                      case 1:
+ 822   5                          adjusted.Second--;
+ 823   5                          break;
+ 824   5                      case 2:
+ 825   5                          adjusted.Minute--;
+ 826   5                          break;
+ 827   5                      case 3:
+ 828   5                          adjusted.Hour--;
+ 829   5                          break;
+ 830   5                      case 4:
+ 831   5                          adjusted.Day--;
+ 832   5                          break;
+ 833   5                      case 5:
+ 834   5                          adjusted.Month--;
+ 835   5                          break;
+ 836   5                      case 6:
+ 837   5                          adjusted.Year--;
+ 838   5                          break;
+ 839   5                      default:
+ 840   5                          break;
+ 841   5                      }
+ 842   4                  }
+ 843   3      
+ 844   3      
+ 845   3                  if(key_status[1] != 0)
+ 846   3                  {
+ 847   4                      maxweight--;
+ 848   4                  }
+ 849   3      
+ 850   3                  if(key_status[2] != 0)
+ 851   3                  {
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 15  
+
+ 852   4                      switch(key_status[2])
+ 853   4                      {
+ 854   5                      case 1: {
+ 855   6                          if(tmp1 != 0)tmp1--;
+ 856   6                          choice_weight = steady_weight[tmp1];
+ 857   6                          break;
+ 858   6                      }
+ 859   5                      case 2: {
+ 860   6                          if(tmp2 != 0)tmp2--;
+ 861   6                          choice_error = error[tmp2];
+ 862   6                          break;
+ 863   6                      }
+ 864   5                      default:
+ 865   5                          break;
+ 866   5                      }
+ 867   4      
+ 868   4                  }
+ 869   3                  while(!k6);
+ 870   3              }
+ 871   2          }
+ 872   1      
+ 873   1          if(k7 == 0) // È¥Æ¤
+ 874   1          {
+ 875   2              delayms(10);
+ 876   2              if(k7 == 0 && key_status[1] == 1) // Ö»ÓÐÔÚµ¥´Î³ÆÖØÏÂÈ¥Æ¤Ä£Ê½²ÅÆð×÷ÓÃ
+ 877   2              {
+ 878   3                  ET0 = 0;
+ 879   3                  TR0 = 0;
+ 880   3                  skin = weight; // ±£´æÆ¤µÄÖØÁ¿
+ 881   3                  weight = 0; //Æ¤¸øÈ¥ÁËÂï
+ 882   3                  key_status[6]++;
+ 883   3                  if(key_status[6] == 2)key_status[6] = 0;
+ 884   3      
+ 885   3                  while(!k7);
+ 886   3              }
+ 887   2          }
+ 888   1          if(k8 == 0)
+ 889   1          {
+ 890   2              delayms(10);
+ 891   2              if(k8 == 0 && (key_status[3] == 4 | key_status[7] == 2))
+ 892   2              {
+ 893   3                  key_status[3] = 0;
+ 894   3                  key_status[7]++;
+ 895   3      
+ 896   3                  if(key_status[7] == 3) {
+ 897   4                      key_status[7] = 0;
+ 898   4                  }
+ 899   3      
+ 900   3                  write_com(0x01); // ÇåÆÁ ·ÀÖ¹ÇÐ»»Ä£Ê½ºó»¨ÆÁ
+ 901   3                  while(!k8);
+ 902   3              }
+ 903   2              else if(k8 == 0 && key_status[0] == 0 && key_status[1] == 0 && key_status[2] == 0 && key_status[3]
+             - == 0) // k8µÄµÚ¶þÖÖÄ£Ê½£¬Ö»ÓÐÔÚ°´ÏÂµÄÊ±ºò²ÅÄÜÏÔÊ¾ÎÂ¶È
+ 904   2              {   // ÎªÁËµ¥¶ÀÇø·Ö³öÀ´Ò»ÖÖ×ªÌ¬
+ 905   3                  if(key_status[7] == 0)key_status[7] = 6;
+ 906   3                  else key_status[7] = 0;
+ 907   3                  while(!k8); // Ö±µ½±»°´ÏÂ
+ 908   3              }
+ 909   2      
+ 910   2              write_com(0x01);
+ 911   2          }
+ 912   1      }
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 16  
+
+ 913          
+ 914          
+ 915          
+ 916          /*****************************************************Ö÷º¯Êý**********************************************
+             -*******/
+ 917          void main()
+ 918          {
+ 919   1          uchar i = 0;
+ 920   1      
+ 921   1          SYSTEMTIME T;
+ 922   1          init();
+ 923   1      
+ 924   1          /*
+ 925   1          i = iic_read(1);
+ 926   1      
+ 927   1          i++;
+ 928   1          iic_write(1, i);
+ 929   1          w1 = i/10;
+ 930   1          w2 = i%10;
+ 931   1          write_com(0x80);
+ 932   1          write_string("HELLO :",6);
+ 933   1          write_data(w1+0x30);
+ 934   1          write_data(w2+0x30);*/
+ 935   1      //    ES = 1;
+ 936   1      //  TR1 = 1;
+ 937   1      //  ET1 = 1;
+ 938   1          while(1)
+ 939   1          {
+ 940   2      
+ 941   2      
+ 942   2              //write_com(0xc0);
+ 943   2              // write_string(p2,2);
+ 944   2              DS1302_GetTime(&T) ;
+ 945   2              adjusted.Second = T.Second;
+ 946   2              adjusted.Minute = T.Minute;
+ 947   2              adjusted.Hour = T.Hour;
+ 948   2              adjusted.Week = T.Week;
+ 949   2              adjusted.Day = T.Day;
+ 950   2              adjusted.Month = T.Month;
+ 951   2              adjusted.Year = T.Year;
+ 952   2      
+ 953   2              for(i = 0; i < 9; i++)
+ 954   2              {
+ 955   3                  adjusted.DateString[i] = T.DateString[i];
+ 956   3                  adjusted.TimeString[i] = T.TimeString[i];
+ 957   3              }
+ 958   2              time_deal();
+ 959   2              key_deal();
+ 960   2              // Ôö¼ÓÕâ¸öÅÐ¶ÏÌõ¼þ ¼õÉÙCPUµÄÊ¹ÓÃ
+ 961   2              if(key_status[1] != 0 | key_status[2] == 3) {
+ 962   3                  weight = (unsigned long)(weight_deal(0) * 1.9608 - 1);
+ 963   3      
+ 964   3      //    send_string("the times: ",10);
+ 965   3      //    send(sum);
+ 966   3      //    send_string("the weight: ",13);
+ 967   3      //    send(weight);
+ 968   3      
+ 969   3              }
+ 970   2              display_deal(); //ÏÔÊ¾´¦Àí
+ 971   2      
+ 972   2      
+ 973   2      //
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 17  
+
+ 974   2      //  if(send_flag==1)
+ 975   2      //  {
+ 976   2      //    send_informations();
+ 977   2      //    send_flag=0;
+ 978   2      //  }
+ 979   2              if(key_status[7] == 1)
+ 980   2              {
+ 981   3                  send_informations();
+ 982   3              }
+ 983   2              if(key_status[1] != 0)
+ 984   2              {
+ 985   3                  // ÅÐ¶ÏÒ»ÏÂÊÇ·ñ³¬¹ý×î´óÁ¿³Ì£¬Èô³¬¹ý£¬ÄÇ¾Í·äÃùÆ÷Ïì
+ 986   3                  if((int)weight > maxweight)
+ 987   3                  {
+ 988   4                      led = 0; // Ö¸Ê¾µÆÁÁ
+ 989   4                      beep = 0;
+ 990   4                  }
+ 991   3                  else
+ 992   3                  {
+ 993   4                      led = 1;
+ 994   4                      beep = 1;
+ 995   4                  }
+ 996   3      
+ 997   3              }
+ 998   2              delayms(10);
+ 999   2      
+1000   2      
+1001   2      
+1002   2      
+1003   2      
+1004   2          }
+1005   1      
+1006   1      
+1007   1      
+1008   1      
+1009   1          return;
+1010   1      }
+1011          
+1012          /************************************************¶¨Ê±Æ÷º¯Êý***********************************************
+             -********/
+1013          void t1() interrupt 1
+1014          {
+1015   1          static char i = 0;
+1016   1          TH0 = (65536 - 50000) / 256;
+1017   1          TL0 = (65536 - 50000) % 256;
+1018   1          i++;
+1019   1      
+1020   1          if(i == 20)
+1021   1          {
+1022   2              i = 0; // Ò»ÃëÁË
+1023   2              if(key_status[2] == 3) {
+1024   3                  if(weight == skin)
+1025   3                  {
+1026   4                      // Õâ¸öÊ±ºò¾Í¿ÉÒÔÈ·¶¨±¾´Î¼ÆÊýÁË
+1027   4                      sum++;
+1028   4                      if(weight > choice_weight)
+1029   4                      {
+1030   5                          if(weight - choice_weight > choice_error)bad++;
+1031   5                      }
+1032   4                      else
+1033   4                      {
+1034   5                          if(choice_weight - weight > choice_error)bad++;
+C51 COMPILER V9.52.0.0   MAIN                                                              06/24/2020 16:35:58 PAGE 18  
+
+1035   5                      }
+1036   4                      iic_write(0xff - sum, weight); // °ÑÕâ¸öÖÊÁ¿¼ÇÂ¼µ¹×Å¼ÇÂ¼½ø24C02ÖÐ
+1037   4                      led = ~led; // ·´×ªÖ¸Ê¾
+1038   4      
+1039   4      
+1040   4                  }
+1041   3                  skin = weight; // ÕâÀïskin±äÁ¿±»ÀûÓÃÀ´´æ´¢1sÇ°µÄÖØÁ¿
+1042   3              }
+1043   2              else
+1044   2              {
+1045   3                  Start18B20();
+1046   3              }
+1047   2          }
+1048   1      
+1049   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   4867    ----
+   CONSTANT SIZE    =    405    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     59      48
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       6
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

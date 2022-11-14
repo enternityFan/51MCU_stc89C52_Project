@@ -6,7 +6,7 @@ bin-release/
 
 # Other files and folders
 .settings/
-
+程序框图原图图片/
 # Executables
 *.swf
 *.air

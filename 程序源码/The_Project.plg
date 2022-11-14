@@ -1,0 +1,50 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Project:</h2>
+C:\Users\14064\Desktop\自控实验\65-1812020070-李帆-综合课程设计\程序源码\The_Project.uvproj
+Project File Date:  06/20/2020
+
+<h2>Output:</h2>
+Rebuild target 'Target 1'
+assembling STARTUP.A51...
+compiling iic.c...
+compiling main.c...
+main.c(66): error C132: 'key_deal': not in formal parameter list
+main.c(69): error C132: '_delay_us': not in formal parameter list
+main.c(69): error C141: syntax error near '{'
+main.c(75): error C132: '_delayms': not in formal parameter list
+main.c(75): error C141: syntax error near '{'
+main.c(76): error C136: 't': 'void' on variable
+main.c(76): error C132: 't': not in formal parameter list
+main.c(77): error C141: syntax error near 'while'
+main.c(77): error C141: syntax error near '--', expected ')'
+main.c(77): error C141: syntax error near '=', expected ')'
+main.c(77): error C129: missing ';' before '<'
+Target not created
+Rebuild target 'Target 1'
+assembling STARTUP.A51...
+compiling iic.c...
+compiling main.c...
+main.c(437): warning C182: pointer to different objects
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?INIT_IIC?IIC
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_DATATOBCD?MAIN
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?DS1302_TIMESTOP?MAIN
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_DELAY_US?MAIN
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?RESPONSE?IIC
+    CALLER1: ?C_C51STARTUP
+    CALLER2: ?PR?T1?MAIN
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?GET18B20ACK?MAIN
+    CALLER1: ?C_C51STARTUP
+    CALLER2: ?PR?T1?MAIN
+Program Size: data=112.6 xdata=0 code=6800
+creating hex file from "The_Project"...
+"The_Project" - 0 Error(s), 7 Warning(s).
